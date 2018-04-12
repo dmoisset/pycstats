@@ -18,7 +18,7 @@ class StandardVisitAnalyzer(CodeAnalyzerBase):
 
     def visit_ignore(self, obj): pass
 
-    visit_NoneType = visit_int = visit_str = visit_bool = visit_float = visit_ignore
+    visit_NoneType = visit_int = visit_str = visit_bytes = visit_bool = visit_float = visit_ignore
 
     def visit_iterable(self, it):
         for elem in it:
@@ -68,14 +68,24 @@ class DupStats(StandardVisitAnalyzer):
         self.all_bytes = 0
 
     def visit(self, obj):
-        self.all_count += 1
-        self.all_bytes += sys.getsizeof(obj)
-        if obj in self.visited and id(obj) not in self.visited[obj]:
-            # object is duplicate
-            print("Dup:", obj)
-            self.dup_count += 1
-            self.dup_bytes += sys.getsizeof(obj)
-        self.visited.setdefault(obj, set()).add(id(obj))
+        objsize = sys.getsizeof(obj)
+        if obj in self.visited:
+            if id(obj) not in self.visited[obj]:
+                # object is duplicate
+                # print("Dup: ", repr(obj))
+                self.dup_count += 1
+                self.dup_bytes += objsize
+                self.all_count += 1
+                self.all_bytes += objsize
+                self.visited[obj].add(id(obj))
+            else:
+                # We've seen this instance before. Nothing to do
+                pass
+        else:
+            # First occurrence of the object
+            self.visited[obj] = {id(obj)}
+            self.all_count += 1
+            self.all_bytes += objsize
         super().visit(obj)
 
 def main(fn):
