@@ -106,6 +106,15 @@ class DupStats(StandardVisitAnalyzer):
             self.all_bytes += objsize
         super().visit(obj)
 
+    def biggest_duplicates(self):
+        usage = []
+        for obj in self.visited:
+            count = len(self.visited[obj])
+            size = sys.getsizeof(obj) * (count-1)
+            usage.append((size, count, repr(obj)))
+        usage.sort(reverse=True)
+        return usage
+
 
 def main(*fns):
     a = DataStats()
@@ -128,6 +137,8 @@ def main(*fns):
     print(f"{a.docstring_count} docstrings, {a.docstring_bytes}B")
     print(f"{a.lnotab_count} lineno tables, {a.lnotab_bytes}B")
     print(f"{d.dup_count}/{d.all_count} duplicate objects for {d.dup_bytes}/{d.all_bytes} memory size")
+    for b, count, rep in d.biggest_duplicates()[:10]:
+        print(f"Duplicate: {rep} * {count} -> {b}B")
 
 if __name__ == "__main__":
     main(*sys.argv[1:])
