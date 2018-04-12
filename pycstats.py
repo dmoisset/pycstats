@@ -14,11 +14,13 @@ class CodeAnalyzerBase():
     def visit_default(self, obj):
         print("??", type(obj))
 
+
 class StandardVisitAnalyzer(CodeAnalyzerBase):
 
     def visit_ignore(self, obj): pass
 
-    visit_NoneType = visit_int = visit_str = visit_bytes = visit_bool = visit_float = visit_ignore
+    visit_int = visit_str = visit_bytes = visit_bool = visit_float = visit_complex = visit_ignore
+    visit_NoneType = visit_ellipsis = visit_ignore
 
     def visit_iterable(self, it):
         for elem in it:
@@ -68,6 +70,9 @@ class DupStats(StandardVisitAnalyzer):
         self.all_count = 0
         self.all_bytes = 0
 
+    def reset_objects(self):
+        self.visited = {}
+
     def visit(self, obj):
         objsize = sys.getsizeof(obj)
         if obj in self.visited:
@@ -89,20 +94,23 @@ class DupStats(StandardVisitAnalyzer):
             self.all_bytes += objsize
         super().visit(obj)
 
-def main(fn):
-    f = open(fn, 'rb')
-    f.read(12) # Skip header
-    code_obj = marshal.load(f)
 
+def main(*fns):
     a = DataStats()
-    a.visit(code_obj)
+    d = DupStats()
+
+    for fn in fns:
+        f = open(fn, 'rb')
+        f.read(12) # Skip header
+        code_obj = marshal.load(f)
+
+        a.visit(code_obj)
+        d.visit(code_obj)
+        #d.reset_objects()
 
     print(f"{a.docstring_count} docstrings, {a.docstring_bytes}B")
     print(f"{a.lnotab_count} lineno tables, {a.lnotab_bytes}B")
-
-    d = DupStats()
-    d.visit(code_obj)
     print(f"{d.dup_count}/{d.all_count} duplicate objects for {d.dup_bytes}/{d.all_bytes} memory size")
 
 if __name__ == "__main__":
-    main(sys.argv[1])
+    main(*sys.argv[1:])
