@@ -29,9 +29,21 @@ class StandardVisitAnalyzer(CodeAnalyzerBase):
     visit_tuple = visit_frozenset = visit_iterable
 
     def visit_code(self, code):
-        for const in code.co_consts:
-            self.visit(const)
-
+        self.visit(code.co_argcount)
+        self.visit(code.co_kwonlyargcount)
+        self.visit(code.co_nlocals)
+        self.visit(code.co_stacksize)
+        self.visit(code.co_flags)
+        self.visit(code.co_code)
+        self.visit(code.co_consts)
+        self.visit(code.co_names)
+        self.visit(code.co_varnames)
+        self.visit(code.co_freevars)
+        self.visit(code.co_cellvars)
+        self.visit(code.co_filename)
+        self.visit(code.co_name)
+        self.visit(code.co_firstlineno)
+        self.visit(code.co_lnotab)
 
 class DataStats(StandardVisitAnalyzer):
 
@@ -106,7 +118,12 @@ def main(*fns):
 
         a.visit(code_obj)
         d.visit(code_obj)
-        #d.reset_objects()
+
+        # Uncommenting the next line will measure repeats only within a module, which is
+        # more correct considering that values probably can be shared only within a module, but
+        # will also count cpython singletons like True/False/None/42 once per module where they
+        # appear
+        # d.reset_objects()
 
     print(f"{a.docstring_count} docstrings, {a.docstring_bytes}B")
     print(f"{a.lnotab_count} lineno tables, {a.lnotab_bytes}B")
