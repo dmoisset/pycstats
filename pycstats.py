@@ -14,14 +14,7 @@ class CodeAnalyzerBase():
     def visit_default(self, obj):
         print("??", type(obj))
 
-
-class DataStats(CodeAnalyzerBase):
-    def __init__(self):
-        self.indent = ""
-        self.docstring_count = 0
-        self.docstring_chars = 0
-        self.lnotab_count = 0
-        self.lnotab_bytes = 0
+class StandardVisitAnalyzer(CodeAnalyzerBase):
 
     def visit_ignore(self, obj): pass
 
@@ -32,6 +25,20 @@ class DataStats(CodeAnalyzerBase):
             self.visit(elem)
 
     visit_tuple = visit_frozenset = visit_iterable
+
+    def visit_code(self, code):
+        for const in code.co_consts:
+            self.visit(const)
+
+
+class DataStats(StandardVisitAnalyzer):
+
+    def __init__(self):
+        self.indent = ""
+        self.docstring_count = 0
+        self.docstring_chars = 0
+        self.lnotab_count = 0
+        self.lnotab_bytes = 0
 
     def visit_code(self, code):
         # print(f"{self.indent}{code.co_name}")
@@ -47,10 +54,29 @@ class DataStats(CodeAnalyzerBase):
         self.lnotab_bytes += len(code.co_lnotab)
 
         # Find inner code objects (inside module, class)
-        for const in code.co_consts:
-            self.visit(const)
+        super().visit_code(code)
         self.indent = self.indent[:-4]
 
+
+class DupStats(StandardVisitAnalyzer):
+
+    def __init__(self):
+        self.visited = {}
+        self.dup_count = 0
+        self.dup_bytes = 0
+        self.all_count = 0
+        self.all_bytes = 0
+
+    def visit(self, obj):
+        self.all_count += 1
+        self.all_bytes += sys.getsizeof(obj)
+        if obj in self.visited and id(obj) not in self.visited[obj]:
+            # object is duplicate
+            print("Dup:", obj)
+            self.dup_count += 1
+            self.dup_bytes += sys.getsizeof(obj)
+        self.visited.setdefault(obj, set()).add(id(obj))
+        super().visit(obj)
 
 def main(fn):
     f = open(fn, 'rb')
@@ -62,6 +88,10 @@ def main(fn):
 
     print(f"{a.docstring_count} docstrings, {a.docstring_chars} chars")
     print(f"{a.lnotab_count} lineno tables, {a.lnotab_bytes}B")
+
+    d = DupStats()
+    d.visit(code_obj)
+    print(f"{d.dup_count}/{d.all_count} duplicate objects for {d.dup_bytes}/{d.all_bytes} memory size")
 
 if __name__ == "__main__":
     main(sys.argv[1])
