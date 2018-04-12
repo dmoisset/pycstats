@@ -36,7 +36,7 @@ class DataStats(StandardVisitAnalyzer):
     def __init__(self):
         self.indent = ""
         self.docstring_count = 0
-        self.docstring_chars = 0
+        self.docstring_bytes = 0
         self.lnotab_count = 0
         self.lnotab_bytes = 0
 
@@ -46,12 +46,13 @@ class DataStats(StandardVisitAnalyzer):
 
         # Docstring stats.
         if code.co_consts and not code.co_name.startswith('<') and code.co_consts[0] is not None:
+            # this is an heuristic and can possibly get stuff that's not a docstring
             self.docstring_count += 1
-            self.docstring_chars += len(code.co_consts[0]) # FIXME: How can I get the amount of string storage used?
+            self.docstring_bytes += sys.getsizeof(code.co_consts[0])
 
         # Lnotab stats
         self.lnotab_count += 1
-        self.lnotab_bytes += len(code.co_lnotab)
+        self.lnotab_bytes += sys.getsizeof(code.co_lnotab)
 
         # Find inner code objects (inside module, class)
         super().visit_code(code)
@@ -79,7 +80,7 @@ class DupStats(StandardVisitAnalyzer):
                 self.all_bytes += objsize
                 self.visited[obj].add(id(obj))
             else:
-                # We've seen this instance before. Nothing to do
+                # We've seen this exact instance before. Nothing to do
                 pass
         else:
             # First occurrence of the object
@@ -96,7 +97,7 @@ def main(fn):
     a = DataStats()
     a.visit(code_obj)
 
-    print(f"{a.docstring_count} docstrings, {a.docstring_chars} chars")
+    print(f"{a.docstring_count} docstrings, {a.docstring_bytes}B")
     print(f"{a.lnotab_count} lineno tables, {a.lnotab_bytes}B")
 
     d = DupStats()
